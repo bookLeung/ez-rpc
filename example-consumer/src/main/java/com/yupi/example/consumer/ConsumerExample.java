@@ -12,9 +12,8 @@ import com.yupi.yurpc.utils.ConfigUtils;
  */
 public class ConsumerExample {
     public static void main(String[] args) {
-        RpcConfig rpc = ConfigUtils.loadConfig(RpcConfig.class, "rpc");
-        System.out.println(rpc.toString());
-        System.out.println(RpcApplication.getRpcConfig());
+//        RpcConfig rpc = ConfigUtils.loadConfig(RpcConfig.class, "rpc");
+//        System.out.println(rpc.toString());
 
         // 动态代理
         UserService userService = ServiceProxyFactory.getProxy(UserService.class);
@@ -27,5 +26,11 @@ public class ConsumerExample {
         } else {
             System.out.println("user == null");
         }
+
+        // 测试mock
+        // 假设开启mock，那么mockServiceProxy会返回另一个值
+        // 假设不开启mock，并且服务提供者没有实现这个方法，服务端会继承用default，但与RPC无关
+        short userAge = userService.getUserAge();
+        System.out.println(userAge);
     }
 }

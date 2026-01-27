@@ -14,4 +14,13 @@ public interface UserService {
      * @return
      */
     User getUser(User user);
+
+    /**
+     * 获取用户年龄，用于mock测试
+     *
+     * @return
+     */
+    default short getUserAge() {
+        return 18;
+    }
 }
