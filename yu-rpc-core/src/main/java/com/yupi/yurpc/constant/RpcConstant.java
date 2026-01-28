@@ -14,4 +14,9 @@ public interface RpcConstant {
      * rpc.serverPort=8081
      */
     String DEFAULT_CONFIG_PREFIX = "rpc";
+
+    /**
+     * 默认服务版本
+     */
+    String DEFAULT_SERVICE_VERSION = "1.0";
 }

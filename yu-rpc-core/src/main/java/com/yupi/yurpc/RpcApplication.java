@@ -1,7 +1,10 @@
 package com.yupi.yurpc;
 
+import com.yupi.yurpc.config.RegistryConfig;
 import com.yupi.yurpc.config.RpcConfig;
 import com.yupi.yurpc.constant.RpcConstant;
+import com.yupi.yurpc.registry.Registry;
+import com.yupi.yurpc.registry.RegistryFactory;
 import com.yupi.yurpc.utils.ConfigUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,6 +26,16 @@ public class RpcApplication {
     public static void init(RpcConfig newRpcConfig) {
         rpcConfig = newRpcConfig;
         log.info("rpc init, config = {}", newRpcConfig.toString());
+
+        // 注册中心初始化
+        // 获取注册中心配置
+        RegistryConfig registryConfig = rpcConfig.getRegistryConfig();
+        // 通过工厂获取注册中心实例，参数为注册中心类型，由配置文件决定
+        // 局部变量registry会在方法结束时失效，但其指向的具体的对象实例在工厂中活了下来
+        Registry registry = RegistryFactory.getInstance(registryConfig.getRegistry());
+        // 注册中心初始化
+        registry.init(registryConfig);
+        log.info("registry init, config = {}", registryConfig);
     }
 
     /**
