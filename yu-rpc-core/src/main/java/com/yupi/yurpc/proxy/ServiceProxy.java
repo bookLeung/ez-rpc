@@ -14,6 +14,7 @@ import com.yupi.yurpc.registry.RegistryFactory;
 import com.yupi.yurpc.serializer.JdkSerializer;
 import com.yupi.yurpc.serializer.Serializer;
 import com.yupi.yurpc.serializer.SerializerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
@@ -23,6 +24,7 @@ import java.util.List;
 /**
  * 服务代理（JDK 动态代理）
  */
+@Slf4j
 public class ServiceProxy implements InvocationHandler {
 
     /**
@@ -38,6 +40,7 @@ public class ServiceProxy implements InvocationHandler {
 
         // 指定序列化器
         Serializer serializer = SerializerFactory.getInstance(rpcConfig.getSerializer());
+        log.info("Consumer 正在使用的序列化器: {}", serializer.getClass().getName());
 
         // 构造请求
         RpcRequest rpcRequest = RpcRequest.builder()
@@ -63,6 +66,8 @@ public class ServiceProxy implements InvocationHandler {
 
             // 暂时取第一个，后面再做负载均衡等
             ServiceMetaInfo selectedServiceMetaInfo = serviceMetaInfoList.getFirst();
+
+            log.info("Consumer 准备向地址发送请求: {}", selectedServiceMetaInfo.getServiceAddress());
 
             // 发送请求
             try (HttpResponse httpResponse = HttpRequest.post(selectedServiceMetaInfo.getServiceAddress())

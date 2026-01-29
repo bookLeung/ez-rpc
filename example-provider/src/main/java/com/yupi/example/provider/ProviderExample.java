@@ -22,6 +22,7 @@ public class ProviderExample {
         String serviceName = UserService.class.getName();
 
         // 注册服务到本地，即使搞了注册中心，这里也要保留
+        // 因为注册中心只是路由到 ip:port，还需要本地注册中心内部路由到具体服务实现类
         LocalRegistry.register(serviceName, UserServiceImpl.class);
 
         // 注册服务到注册中心
