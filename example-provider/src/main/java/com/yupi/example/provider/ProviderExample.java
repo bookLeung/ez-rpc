@@ -11,14 +11,29 @@ import com.yupi.yurpc.registry.RegistryFactory;
 import com.yupi.yurpc.server.HttpServer;
 import com.yupi.yurpc.server.VertxHttpServer;
 import com.yupi.yurpc.server.tcp.VertxTcpServer;
+import com.yupi.yurpc.utils.ConfigUtils;
 
 /**
  * 拓展版RPC服务提供者示例
  */
 public class ProviderExample {
     public static void main(String[] args) {
-        // 0.RPC 框架初始化
-        RpcApplication.init();
+//        // 0.RPC 框架初始化
+//        RpcApplication.init();
+
+        // 1. 手动加载配置（原本是 init 方法里自动加载的，现在我们提出来）
+        RpcConfig rpcConfig = ConfigUtils.loadConfig(RpcConfig.class, "rpc");
+
+        // 2. 【核心修改】检查命令行参数，如果有参数，就覆盖端口
+        // 假设 args[0] 是端口号
+        if (args.length > 0) {
+            String port = args[0];
+            rpcConfig.setServerPort(Integer.parseInt(port));
+            System.out.println("使用命令行参数指定的端口启动: " + port);
+        }
+
+        // 3. 使用修改后的配置初始化框架
+        RpcApplication.init(rpcConfig);
 
         // 1.注册服务
         String serviceName = UserService.class.getName();
@@ -27,7 +42,7 @@ public class ProviderExample {
         LocalRegistry.register(serviceName, UserServiceImpl.class);
         // 1.2注册服务到注册中心
         // 1.2.1获取 RPC 配置
-        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+//        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
         // 1.2.2先获取注册中心
         // 获取注册中心配置
         RegistryConfig registryConfig = rpcConfig.getRegistryConfig();

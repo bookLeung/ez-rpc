@@ -19,21 +19,21 @@ public class ConsumerExample {
         UserService userService = ServiceProxyFactory.getProxy(UserService.class);
         User user = new User();
         user.setName("yupi");
-//        // 调用3次
-//        for (int i = 0; i < 3; i++) {
-//            User newUser = userService.getUser(user);
-//            if (newUser != null) {
-//                System.out.println(newUser.getName());
-//            } else {
-//                System.out.println("user == null");
-//            }
-//        }
-        User newUser = userService.getUser(user);
-        if (newUser != null) {
-            System.out.println(newUser.getName());
-        } else {
-            System.out.println("user == null");
+        // 调用30次
+        for (int i = 0; i < 30; i++) {
+            User newUser = userService.getUser(user);
+            if (newUser != null) {
+                System.out.println(newUser.getName());
+            } else {
+                System.out.println("user == null");
+            }
         }
+//        User newUser = userService.getUser(user);
+//        if (newUser != null) {
+//            System.out.println(newUser.getName());
+//        } else {
+//            System.out.println("user == null");
+//        }
 
         // 测试mock
         // 假设开启mock，那么mockServiceProxy会返回另一个值
