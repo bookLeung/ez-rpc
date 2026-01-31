@@ -1,0 +1,36 @@
+package com.yupi.yurpc.server.tcp;
+
+import com.yupi.yurpc.server.HttpServer;
+import io.vertx.core.Vertx;
+import io.vertx.core.net.NetServer;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * Vert.x TCP 服务器
+ */
+@Slf4j
+public class VertxTcpServer implements HttpServer {
+
+    /**
+     * 启动服务器
+     *
+     * @param port
+     */
+    @Override
+    public void doStart(int port) {
+        // 创建 Vert.x 实例
+        Vertx vertx = Vertx.vertx();
+        // 创建 TCP 服务器
+        NetServer server = vertx.createNetServer();
+        // 处理请求
+        server.connectHandler(new TcpServerHandler());
+        // 启动 TCP 服务器并监听指定端口
+        server.listen(port, result -> {
+            if (result.succeeded()) {
+                System.out.println("TCP server is now listening on port " + port);
+            } else {
+                System.out.println("Failed to start TCP server: " + result.cause());
+            }
+        });
+    }
+}

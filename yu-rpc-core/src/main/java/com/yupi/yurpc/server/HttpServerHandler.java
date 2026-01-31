@@ -26,11 +26,6 @@ public class HttpServerHandler implements Handler<HttpServerRequest> {
     public void handle(HttpServerRequest request) {
         // 指定序列化器
         final Serializer serializer = SerializerFactory.getInstance(RpcApplication.getRpcConfig().getSerializer());
-        log.info("Consumer 正在使用的序列化器: {}", serializer.getClass().getName());
-
-        // 记录日志
-        System.out.println("Received request: " + request.method() + " " + request.uri());
-
         // 异步处理 HTTP 请求
         request.bodyHandler(body -> {
             byte[] bytes = body.getBytes();
@@ -41,7 +36,6 @@ public class HttpServerHandler implements Handler<HttpServerRequest> {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
             // 构造响应结果对象
             RpcResponse rpcResponse = new RpcResponse();
             // 如果请求为 null，直接返回

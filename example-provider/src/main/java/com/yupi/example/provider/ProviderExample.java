@@ -10,43 +10,47 @@ import com.yupi.yurpc.registry.Registry;
 import com.yupi.yurpc.registry.RegistryFactory;
 import com.yupi.yurpc.server.HttpServer;
 import com.yupi.yurpc.server.VertxHttpServer;
+import com.yupi.yurpc.server.tcp.VertxTcpServer;
 
 /**
  * 拓展版RPC服务提供者示例
  */
 public class ProviderExample {
     public static void main(String[] args) {
-        // RPC 框架初始化
+        // 0.RPC 框架初始化
         RpcApplication.init();
 
+        // 1.注册服务
         String serviceName = UserService.class.getName();
-
-        // 注册服务到本地，即使搞了注册中心，这里也要保留
+        // 1.1注册服务到本地，即使搞了注册中心，这里也要保留
         // 因为注册中心只是路由到 ip:port，还需要本地注册中心内部路由到具体服务实现类
         LocalRegistry.register(serviceName, UserServiceImpl.class);
-
-        // 注册服务到注册中心
-        // 获取 RPC 配置
+        // 1.2注册服务到注册中心
+        // 1.2.1获取 RPC 配置
         RpcConfig rpcConfig = RpcApplication.getRpcConfig();
-        // 先获取注册中心
+        // 1.2.2先获取注册中心
         // 获取注册中心配置
         RegistryConfig registryConfig = rpcConfig.getRegistryConfig();
         // 通过工厂获取注册中心实例，参数为注册中心类型，由配置文件决定
         Registry registry = RegistryFactory.getInstance(registryConfig.getRegistry());
-        // 构造服务元信息
+        // 1.2.3构造服务元信息
         ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
         serviceMetaInfo.setServiceName(serviceName);
         serviceMetaInfo.setServiceHost(rpcConfig.getServerHost());
         serviceMetaInfo.setServicePort(rpcConfig.getServerPort());
-        // 注册服务到注册中心
+        // 1.2.4注册服务到注册中心
         try{
             registry.register(serviceMetaInfo);
         }catch (Exception e) {
             throw new RuntimeException(e);
         }
 
-        // 启动web服务
-        HttpServer httpServer = new VertxHttpServer();
-        httpServer.doStart(rpcConfig.getServerPort());
+//        // 启动web服务
+//        HttpServer httpServer = new VertxHttpServer();
+//        httpServer.doStart(rpcConfig.getServerPort());
+
+        // 2.启动 TCP 服务
+        VertxTcpServer vertxTcpServer = new VertxTcpServer();
+        vertxTcpServer.doStart(rpcConfig.getServerPort());
     }
 }

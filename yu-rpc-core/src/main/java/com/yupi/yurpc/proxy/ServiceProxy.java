@@ -1,6 +1,7 @@
 package com.yupi.yurpc.proxy;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import com.yupi.yurpc.RpcApplication;
@@ -9,17 +10,23 @@ import com.yupi.yurpc.constant.RpcConstant;
 import com.yupi.yurpc.model.RpcRequest;
 import com.yupi.yurpc.model.RpcResponse;
 import com.yupi.yurpc.model.ServiceMetaInfo;
+import com.yupi.yurpc.protocol.*;
 import com.yupi.yurpc.registry.Registry;
 import com.yupi.yurpc.registry.RegistryFactory;
 import com.yupi.yurpc.serializer.JdkSerializer;
 import com.yupi.yurpc.serializer.Serializer;
 import com.yupi.yurpc.serializer.SerializerFactory;
+import com.yupi.yurpc.server.tcp.VertxTcpClient;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.net.NetClient;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 服务代理（JDK 动态代理）
@@ -35,14 +42,8 @@ public class ServiceProxy implements InvocationHandler {
      */
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+        // 1.构造请求
         String serviceName = method.getDeclaringClass().getName();
-
-        // 指定序列化器
-        Serializer serializer = SerializerFactory.getInstance(rpcConfig.getSerializer());
-        log.info("Consumer 正在使用的序列化器: {}", serializer.getClass().getName());
-
-        // 构造请求
         RpcRequest rpcRequest = RpcRequest.builder()
                 .serviceName(serviceName)
                 .methodName(method.getName())
@@ -50,38 +51,23 @@ public class ServiceProxy implements InvocationHandler {
                 .args(args)
                 .build();
 
-        try {
-            // 序列化
-            byte[] bodyBytes = serializer.serialize(rpcRequest);
-
-            // 从注册中心获取服务提供者请求地址
-            Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
-            ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
-            serviceMetaInfo.setServiceName(serviceName);
-            serviceMetaInfo.setServiceVersion(RpcConstant.DEFAULT_SERVICE_VERSION);
-            List<ServiceMetaInfo> serviceMetaInfoList = registry.serviceDiscovery(serviceMetaInfo.getServiceKey());
-            if (CollUtil.isEmpty(serviceMetaInfoList)) {
-                throw new RuntimeException("暂无服务地址");
-            }
-
-            // 暂时取第一个，后面再做负载均衡等
-            ServiceMetaInfo selectedServiceMetaInfo = serviceMetaInfoList.getFirst();
-
-            log.info("Consumer 准备向地址发送请求: {}", selectedServiceMetaInfo.getServiceAddress());
-
-            // 发送请求
-            try (HttpResponse httpResponse = HttpRequest.post(selectedServiceMetaInfo.getServiceAddress())
-                    .body(bodyBytes)
-                    .execute()) {
-                byte[] result = httpResponse.bodyBytes();
-                // 反序列化
-                RpcResponse rpcResponse = serializer.deserialize(result, RpcResponse.class);
-                return rpcResponse.getData();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        // 2.从注册中心获取服务提供者请求地址
+        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+        Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
+        ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
+        serviceMetaInfo.setServiceName(serviceName);
+        serviceMetaInfo.setServiceVersion(RpcConstant.DEFAULT_SERVICE_VERSION);
+        List<ServiceMetaInfo> serviceMetaInfoList = registry.serviceDiscovery(serviceMetaInfo.getServiceKey());
+        if (CollUtil.isEmpty(serviceMetaInfoList)) {
+            throw new RuntimeException("暂无服务地址");
         }
+        // 暂时取第一个，后面再做负载均衡等
+        ServiceMetaInfo selectedServiceMetaInfo = serviceMetaInfoList.getFirst();
 
-        return null;
+        // 3.发送 TCP 请求
+        RpcResponse rpcResponse = VertxTcpClient.doRequest(rpcRequest, selectedServiceMetaInfo);
+
+        return rpcResponse.getData();
+
     }
 }
