@@ -26,8 +26,8 @@ public class VertxTcpClient {
 
     public static RpcResponse doRequest(RpcRequest rpcRequest, ServiceMetaInfo serviceMetaInfo) throws ExecutionException, InterruptedException {
         // 发送 TCP 请求
-        // 创建 Vert.x 实例
-        Vertx vertx = Vertx.vertx();
+        // 复用 Vert.x 实例
+        Vertx vertx = RpcApplication.getVertx();
         // 创建 TCP 客户端
         NetClient netClient = vertx.createNetClient();
         CompletableFuture<RpcResponse> responseFuture = new CompletableFuture<>();
@@ -80,7 +80,7 @@ public class VertxTcpClient {
         // 阻塞，直到响应完成，才会继续向下执行
         RpcResponse rpcResponse = null;
         try {
-            rpcResponse = responseFuture.get(5, TimeUnit.SECONDS);
+            rpcResponse = responseFuture.get(3, TimeUnit.SECONDS);
             // 记得关闭连接
             netClient.close();
             return rpcResponse;

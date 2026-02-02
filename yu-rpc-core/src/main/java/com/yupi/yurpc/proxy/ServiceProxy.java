@@ -7,6 +7,8 @@ import cn.hutool.http.HttpResponse;
 import com.yupi.yurpc.RpcApplication;
 import com.yupi.yurpc.config.RpcConfig;
 import com.yupi.yurpc.constant.RpcConstant;
+import com.yupi.yurpc.fault.retry.RetryStrategy;
+import com.yupi.yurpc.fault.retry.RetryStrategyFactory;
 import com.yupi.yurpc.loadbalancer.LoadBalancer;
 import com.yupi.yurpc.loadbalancer.LoadBalancerFactory;
 import com.yupi.yurpc.model.RpcRequest;
@@ -46,6 +48,25 @@ public class ServiceProxy implements InvocationHandler {
      */
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        // 一个只有在 Debug 代理对象时才会出现的“海森堡 Bug”
+        // 🔍【核心修复】防止 toString 等方法触发 RPC 远程调用
+        String methodName = method.getName();
+
+        // 1. 如果是 toString，直接返回一个标识字符串
+        if ("toString".equals(methodName)) {
+            return "RPC Proxy for " + method.getDeclaringClass().getName();
+        }
+
+        // 2. 如果是 hashCode，返回原本的哈希码
+        if ("hashCode".equals(methodName)) {
+            return System.identityHashCode(proxy);
+        }
+
+        // 3. 如果是 equals，比较引用
+        if ("equals".equals(methodName)) {
+            return proxy == args[0];
+        }
+
         // 1.构造请求
         String serviceName = method.getDeclaringClass().getName();
         RpcRequest rpcRequest = RpcRequest.builder()
@@ -55,27 +76,32 @@ public class ServiceProxy implements InvocationHandler {
                 .args(args)
                 .build();
 
-        // 2.从注册中心获取服务提供者请求地址
-        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
-        Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
-        ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
-        serviceMetaInfo.setServiceName(serviceName);
-        serviceMetaInfo.setServiceVersion(RpcConstant.DEFAULT_SERVICE_VERSION);
-        List<ServiceMetaInfo> serviceMetaInfoList = registry.serviceDiscovery(serviceMetaInfo.getServiceKey());
-        if (CollUtil.isEmpty(serviceMetaInfoList)) {
-            throw new RuntimeException("暂无服务地址");
+        try {
+            // 2.从注册中心获取服务提供者请求地址
+            RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+            Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
+            ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
+            serviceMetaInfo.setServiceName(serviceName);
+            serviceMetaInfo.setServiceVersion(RpcConstant.DEFAULT_SERVICE_VERSION);
+            List<ServiceMetaInfo> serviceMetaInfoList = registry.serviceDiscovery(serviceMetaInfo.getServiceKey());
+            if (CollUtil.isEmpty(serviceMetaInfoList)) {
+                throw new RuntimeException("暂无服务地址");
+            }
+            // 负载均衡
+            LoadBalancer loadBalancer = LoadBalancerFactory.getInstance(rpcConfig.getLoadBalancer());
+            // 将调用方法名（请求路径）作为负载均衡参数
+            Map<String, Object> requestParams = new HashMap<>();
+            requestParams.put("methodName", method.getName());
+            ServiceMetaInfo selectedServiceMetaInfo = loadBalancer.select(requestParams, serviceMetaInfoList);
+            log.info("负载均衡得到服务提供者：{}", selectedServiceMetaInfo.getServiceAddress());
+            // 3.发送 TCP 请求，使用重试机制
+            RetryStrategy retryStrategy = RetryStrategyFactory.getInstance(rpcConfig.getRetryStrategy());
+            RpcResponse rpcResponse = retryStrategy.doRetry(() ->
+                VertxTcpClient.doRequest(rpcRequest, selectedServiceMetaInfo)
+            );
+            return rpcResponse.getData();
+        } catch (Exception e) {
+            throw new RuntimeException("调用失败", e);
         }
-        // 负载均衡
-        LoadBalancer loadBalancer = LoadBalancerFactory.getInstance(rpcConfig.getLoadBalancer());
-        // 将调用方法名（请求路径）作为负载均衡参数
-        Map<String, Object> requestParams = new HashMap<>();
-        requestParams.put("methodName", method.getName());
-        ServiceMetaInfo selectedServiceMetaInfo = loadBalancer.select(requestParams, serviceMetaInfoList);
-        log.info("负载均衡得到服务提供者：{}", selectedServiceMetaInfo.getServiceAddress());
-        // 3.发送 TCP 请求
-        RpcResponse rpcResponse = VertxTcpClient.doRequest(rpcRequest, selectedServiceMetaInfo);
-
-        return rpcResponse.getData();
-
     }
 }

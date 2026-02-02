@@ -1,5 +1,6 @@
 package com.yupi.yurpc.config;
 
+import com.yupi.yurpc.fault.retry.RetryStrategyKeys;
 import com.yupi.yurpc.loadbalancer.LoadBalancerKeys;
 import com.yupi.yurpc.serializer.SerializerKeys;
 import lombok.Data;
@@ -49,4 +50,45 @@ public class RpcConfig {
      * 负载均衡器
      */
     private String loadBalancer = LoadBalancerKeys.ROUND_ROBIN;
+
+    /**
+     * 重试策略
+     */
+    private String retryStrategy = RetryStrategyKeys.NO;
+
+    /**
+     * 重试参数配置
+     */
+    private RetryConfig retryConfig = new RetryConfig();
+
+    /**
+     * 内部配置类：专门管理重试的参数
+     */
+    @Data
+    public static class RetryConfig {
+        /**
+         * 初始重试间隔 (ms)
+         */
+        private long initialInterval = 1000L;
+
+        /**
+         * 最大重试间隔 (ms)
+         */
+        private long maxInterval = 30000L;
+
+        /**
+         * 最大重试次数
+         */
+        private int maxAttempts = 5;
+
+        /**
+         * 乘数 (下一轮等待时间 = 当前 * multiplier)
+         */
+        private double multiplier = 1.5;
+
+        /**
+         * 随机抖动因子 (0.0 - 1.0)
+         */
+        private double jitter = 0.2;
+    }
 }
