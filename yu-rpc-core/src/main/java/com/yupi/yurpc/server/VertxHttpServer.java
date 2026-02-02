@@ -1,5 +1,6 @@
 package com.yupi.yurpc.server;
 
+import com.yupi.yurpc.RpcApplication;
 import io.vertx.core.Vertx;
 
 /**
@@ -14,8 +15,8 @@ public class VertxHttpServer implements HttpServer {
      */
     @Override
     public void doStart(int port) {
-        // 创建vertx实例
-        Vertx vertx = Vertx.vertx();
+        // 复用vertx实例
+        Vertx vertx = RpcApplication.getVertx();
         // 创建http服务器
         io.vertx.core.http.HttpServer server = vertx.createHttpServer();
         // 监听端口并处理请求

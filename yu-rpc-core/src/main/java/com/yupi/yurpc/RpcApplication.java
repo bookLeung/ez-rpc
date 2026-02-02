@@ -6,6 +6,7 @@ import com.yupi.yurpc.constant.RpcConstant;
 import com.yupi.yurpc.registry.Registry;
 import com.yupi.yurpc.registry.RegistryFactory;
 import com.yupi.yurpc.utils.ConfigUtils;
+import io.vertx.core.Vertx;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -16,7 +17,13 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class RpcApplication {
+
     private static volatile RpcConfig rpcConfig;
+
+    /**
+     * 全局唯一的 Vertx 实例
+     */
+    private static volatile Vertx vertx;
 
     /**
      * 框架初始化，支持传入自定义配置
@@ -67,5 +74,21 @@ public class RpcApplication {
         }
 
         return rpcConfig;
+    }
+
+    /**
+     * 获取全局唯一 Vertx 实例，DCL 单例模式实现懒加载
+     *
+     * @return
+     */
+    public static Vertx getVertx() {
+        if (vertx == null) {
+            synchronized (RpcApplication.class) {
+                if (vertx == null) {
+                    vertx = Vertx.vertx();
+                }
+            }
+        }
+        return vertx;
     }
 }

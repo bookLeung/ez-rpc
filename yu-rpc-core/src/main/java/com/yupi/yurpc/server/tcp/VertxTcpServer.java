@@ -1,5 +1,6 @@
 package com.yupi.yurpc.server.tcp;
 
+import com.yupi.yurpc.RpcApplication;
 import com.yupi.yurpc.server.HttpServer;
 import io.vertx.core.Vertx;
 import io.vertx.core.net.NetServer;
@@ -18,8 +19,8 @@ public class VertxTcpServer implements HttpServer {
      */
     @Override
     public void doStart(int port) {
-        // 创建 Vert.x 实例
-        Vertx vertx = Vertx.vertx();
+        // 复用 Vert.x 实例
+        Vertx vertx = RpcApplication.getVertx();
         // 创建 TCP 服务器
         NetServer server = vertx.createNetServer();
         // 处理请求
