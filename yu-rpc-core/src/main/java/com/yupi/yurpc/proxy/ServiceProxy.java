@@ -9,6 +9,8 @@ import com.yupi.yurpc.config.RpcConfig;
 import com.yupi.yurpc.constant.RpcConstant;
 import com.yupi.yurpc.fault.retry.RetryStrategy;
 import com.yupi.yurpc.fault.retry.RetryStrategyFactory;
+import com.yupi.yurpc.fault.tolerant.TolerantStrategy;
+import com.yupi.yurpc.fault.tolerant.TolerantStrategyFactory;
 import com.yupi.yurpc.loadbalancer.LoadBalancer;
 import com.yupi.yurpc.loadbalancer.LoadBalancerFactory;
 import com.yupi.yurpc.model.RpcRequest;
@@ -51,6 +53,7 @@ public class ServiceProxy implements InvocationHandler {
         // 一个只有在 Debug 代理对象时才会出现的“海森堡 Bug”
         // 🔍【核心修复】防止 toString 等方法触发 RPC 远程调用
         String methodName = method.getName();
+//        log.info("ServiceProxy.invoke 被调用了！方法名：{}", methodName);
 
         // 1. 如果是 toString，直接返回一个标识字符串
         if ("toString".equals(methodName)) {
@@ -71,37 +74,42 @@ public class ServiceProxy implements InvocationHandler {
         String serviceName = method.getDeclaringClass().getName();
         RpcRequest rpcRequest = RpcRequest.builder()
                 .serviceName(serviceName)
-                .methodName(method.getName())
+                .methodName(methodName)
                 .parameterTypes(method.getParameterTypes())
                 .args(args)
                 .build();
 
-        try {
-            // 2.从注册中心获取服务提供者请求地址
-            RpcConfig rpcConfig = RpcApplication.getRpcConfig();
-            Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
-            ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
-            serviceMetaInfo.setServiceName(serviceName);
-            serviceMetaInfo.setServiceVersion(RpcConstant.DEFAULT_SERVICE_VERSION);
-            List<ServiceMetaInfo> serviceMetaInfoList = registry.serviceDiscovery(serviceMetaInfo.getServiceKey());
-            if (CollUtil.isEmpty(serviceMetaInfoList)) {
-                throw new RuntimeException("暂无服务地址");
-            }
-            // 负载均衡
-            LoadBalancer loadBalancer = LoadBalancerFactory.getInstance(rpcConfig.getLoadBalancer());
-            // 将调用方法名（请求路径）作为负载均衡参数
-            Map<String, Object> requestParams = new HashMap<>();
-            requestParams.put("methodName", method.getName());
-            ServiceMetaInfo selectedServiceMetaInfo = loadBalancer.select(requestParams, serviceMetaInfoList);
-            log.info("负载均衡得到服务提供者：{}", selectedServiceMetaInfo.getServiceAddress());
-            // 3.发送 TCP 请求，使用重试机制
-            RetryStrategy retryStrategy = RetryStrategyFactory.getInstance(rpcConfig.getRetryStrategy());
-            RpcResponse rpcResponse = retryStrategy.doRetry(() ->
-                VertxTcpClient.doRequest(rpcRequest, selectedServiceMetaInfo)
-            );
-            return rpcResponse.getData();
-        } catch (Exception e) {
-            throw new RuntimeException("调用失败", e);
+        // 2.从注册中心获取服务提供者请求地址
+        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+        Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
+        ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
+        serviceMetaInfo.setServiceName(serviceName);
+        serviceMetaInfo.setServiceVersion(RpcConstant.DEFAULT_SERVICE_VERSION);
+        List<ServiceMetaInfo> serviceMetaInfoList = registry.serviceDiscovery(serviceMetaInfo.getServiceKey());
+        if (CollUtil.isEmpty(serviceMetaInfoList)) {
+            throw new RuntimeException("暂无服务地址");
         }
+        // 负载均衡
+        LoadBalancer loadBalancer = LoadBalancerFactory.getInstance(rpcConfig.getLoadBalancer());
+        // 将调用方法名（请求路径）作为负载均衡参数
+        Map<String, Object> requestParams = new HashMap<>();
+        requestParams.put("methodName", method.getName());
+        ServiceMetaInfo selectedServiceMetaInfo = loadBalancer.select(requestParams, serviceMetaInfoList);
+        log.info("负载均衡得到服务提供者：{}", selectedServiceMetaInfo.getServiceAddress());
+        // 3.发送 TCP 请求，使用重试机制、容错策略
+        RpcResponse rpcResponse;
+        try {
+            RetryStrategy retryStrategy = RetryStrategyFactory.getInstance(rpcConfig.getRetryStrategy());
+            rpcResponse = retryStrategy.doRetry(() ->
+                    VertxTcpClient.doRequest(rpcRequest, selectedServiceMetaInfo)
+            );
+        } catch (Exception e) {
+            // 容错机制
+            log.error("RPC 调用失败，使用容错策略处理", e);
+            TolerantStrategy tolerantStrategy = TolerantStrategyFactory.getInstance(rpcConfig.getTolerantStrategy());
+            rpcResponse = tolerantStrategy.doTolerant(null, e);
+        }
+        return rpcResponse.getData();
+
     }
 }
