@@ -130,7 +130,7 @@ public class EtcdRegistry implements Registry {
                         String value = keyValue.getValue().toString(StandardCharsets.UTF_8);
                         return JSONUtil.toBean(value, ServiceMetaInfo.class);
                     })
-                    .toList();
+                    .collect(Collectors.toList());
             // 写入服务缓存
             registryServiceCache.writeCache(serviceMetaInfoList);
             return serviceMetaInfoList;
@@ -178,7 +178,7 @@ public class EtcdRegistry implements Registry {
                             continue;
 
                         // 未过期，重新注册，相当于续期；好处：万一出现数据丢失，也能重新注册
-                        KeyValue keyValue = keyValues.getFirst();
+                        KeyValue keyValue = keyValues.get(0);
                         String value = keyValue.getValue().toString(StandardCharsets.UTF_8);
                         ServiceMetaInfo serviceMetaInfo = JSONUtil.toBean(value, ServiceMetaInfo.class);
                         register(serviceMetaInfo);

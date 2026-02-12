@@ -22,7 +22,7 @@ public class RandomLoadBalancer implements LoadBalancer{
         // 只有一个服务，无需轮询
         int size = serviceMetaInfoList.size();
         if (size == 1) {
-            return serviceMetaInfoList.getFirst();
+            return serviceMetaInfoList.get(0);
         }
         return serviceMetaInfoList.get(random.nextInt(size));
     }

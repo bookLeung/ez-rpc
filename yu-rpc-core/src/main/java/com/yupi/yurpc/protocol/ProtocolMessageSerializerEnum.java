@@ -5,6 +5,7 @@ import lombok.Getter;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 协议消息序列化器枚举
@@ -34,7 +35,7 @@ import java.util.List;
     public static List<String> getValues() {
         return Arrays.stream(values())
                 .map(item -> item.value)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     /**

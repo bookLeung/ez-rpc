@@ -105,7 +105,7 @@ public class ServiceProxy implements InvocationHandler {
             );
         } catch (Exception e) {
             // 容错机制
-            log.error("RPC 调用失败，使用容错策略处理", e);
+            log.error("RPC 调用失败，使用容错策略{}处理", rpcConfig.getTolerantStrategy(), e);
             TolerantStrategy tolerantStrategy = TolerantStrategyFactory.getInstance(rpcConfig.getTolerantStrategy());
             rpcResponse = tolerantStrategy.doTolerant(null, e);
         }

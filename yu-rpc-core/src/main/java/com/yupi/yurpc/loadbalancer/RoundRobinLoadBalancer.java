@@ -22,7 +22,7 @@ public class RoundRobinLoadBalancer implements LoadBalancer{
         // 只有一个服务，无需轮询
         int size = serviceMetaInfoList.size();
         if (size == 1) {
-            return serviceMetaInfoList.getFirst();
+            return serviceMetaInfoList.get(0);
         }
         // 取模算法轮询
         int index = currentIndex.getAndIncrement() % size;

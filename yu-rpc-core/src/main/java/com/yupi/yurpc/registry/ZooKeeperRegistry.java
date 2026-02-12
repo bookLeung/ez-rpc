@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * ZooKeeper 注册中心
@@ -130,7 +131,7 @@ public class ZooKeeperRegistry implements Registry {
             // 解析服务信息
             List<ServiceMetaInfo> serviceMetaInfoList = serviceInstances.stream()
                     .map(ServiceInstance::getPayload)
-                    .toList();
+                    .collect(Collectors.toList());
 
             // 写入服务缓存
             registryServiceCache.writeCache(serviceMetaInfoList);
