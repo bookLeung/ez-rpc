@@ -95,7 +95,7 @@ public class ServiceProxy implements InvocationHandler {
         Map<String, Object> requestParams = new HashMap<>();
         requestParams.put("methodName", method.getName());
         ServiceMetaInfo selectedServiceMetaInfo = loadBalancer.select(requestParams, serviceMetaInfoList);
-        log.info("负载均衡得到服务提供者：{}", selectedServiceMetaInfo.getServiceAddress());
+//        log.info("负载均衡得到服务提供者：{}", selectedServiceMetaInfo.getServiceAddress());
         // 3.发送 TCP 请求，使用重试机制、容错策略
         RpcResponse rpcResponse;
         try {

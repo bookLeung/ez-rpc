@@ -22,8 +22,14 @@ public class TcpServerHandler implements Handler<NetSocket> {
      */
     @Override
     public void handle(NetSocket socket) {
+        // 1. 监听连接关闭
+        socket.closeHandler(v -> {
+            System.out.println("DEBUG: 服务端检测到连接断开");
+        });
         // 1. 使用 Wrapper 包装原始的 Handler，自动解决粘包半包
         TcpBufferHandlerWrapper tcpBufferHandlerWrapper = new TcpBufferHandlerWrapper(buffer -> {
+            // 🔍 埋点 1
+//            System.out.println("【服务端】收到数据包，长度：" + buffer.length());
             // Lambda表达式，这里是new Handler<Buffer>()
             // 2. 这里的 buffer 已经是完整的消息了（头+体）
             // 处理连接
@@ -31,6 +37,7 @@ public class TcpServerHandler implements Handler<NetSocket> {
             ProtocolMessage<RpcRequest> protocolMessage;
             try {
                 protocolMessage = (ProtocolMessage<RpcRequest>) ProtocolMessageDecoder.decode(buffer);
+//                System.out.println("DEBUG: 服务端解码出的 Request ID = " + protocolMessage.getHeader().getRequestId());
             } catch (IOException e) {
                 throw new RuntimeException("协议消息解码错误", e);
             }
@@ -59,6 +66,8 @@ public class TcpServerHandler implements Handler<NetSocket> {
             ProtocolMessage<RpcResponse> responseProtocolMessage = new ProtocolMessage<>(header, rpcResponse);
             try {
                 Buffer encode = ProtocolMessageEncoder.encode(responseProtocolMessage);
+                // 🔍 埋点 2
+//                System.out.println("【服务端】业务处理完毕，准备发送响应，长度：" + encode.length());
                 socket.write(encode);
             } catch (IOException e) {
                 throw new RuntimeException("协议消息编码错误");

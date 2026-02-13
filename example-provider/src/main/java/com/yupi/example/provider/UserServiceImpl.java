@@ -12,7 +12,7 @@ public class UserServiceImpl implements UserService {
 
     public User getUser(User user) {
 //        System.out.println("用户名：" + user.getName());
-        log.info("Call method getUser(), userName: {}", user.getName());
+//        log.info("Call method getUser(), userName: {}", user.getName());
         return user;
     }
 }

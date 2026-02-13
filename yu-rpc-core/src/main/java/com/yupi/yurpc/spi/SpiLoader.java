@@ -69,7 +69,7 @@ public class SpiLoader {
      * @return 加载到的映射关系
      */
     public static Map<String, Class<?>> load(Class<?> loadClass) {
-        log.info("Load SPI: {}", loadClass.getName());
+//        log.info("Load SPI: {}", loadClass.getName());
         // 扫描路径，用户定义的SPI优先级高于系统SPI
         Map<String, Class<?>> keyClassMap = new HashMap<>();
 

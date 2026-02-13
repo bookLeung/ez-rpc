@@ -26,7 +26,8 @@ public class ProtocolMessageDecoder {
         header.setSerializer(buffer.getByte(2));
         header.setType(buffer.getByte(3));
         header.setStatus(buffer.getByte(4));
-        header.setRequestId(buffer.getInt(5));
+        // 必须读取 8 个字节的 Long
+        header.setRequestId(buffer.getLong(5));
         header.setBodyLength(buffer.getInt(13));
         // 解决粘包问题，只读指定长度的数据
         byte[] bodyBytes = buffer.getBytes(17, 17 + header.getBodyLength());
